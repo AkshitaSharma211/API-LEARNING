@@ -29,3 +29,4 @@ while True:
     messages.append({"role": "assistant", "content": reply})
     
     print(f"AI: {reply}\n")
+    

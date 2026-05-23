@@ -1,47 +1,102 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
-    <title>AI Chat</title>
+    <title>MyBOT - AI Coding Assistant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, sans-serif; background: #f5f5f5; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .container { width: 680px; height: 85vh; background: white; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
-        .header { padding: 20px 24px; border-bottom: 1px solid #eee; font-size: 18px; font-weight: 600; color: #111; }
-        #chatbox { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-        .message { max-width: 75%; padding: 12px 16px; border-radius: 12px; font-size: 15px; line-height: 1.6; white-space: pre-wrap; }
-        .user { background: #111; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .ai { background: #f0f0f0; color: #111; align-self: flex-start; border-bottom-left-radius: 4px; }
-        .input-row { padding: 16px 24px; border-top: 1px solid #eee; display: flex; gap: 10px; }
-        input { flex: 1; padding: 12px 16px; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; outline: none; }
-        input:focus { border-color: #111; }
-        button { padding: 12px 20px; background: #111; color: white; border: none; border-radius: 10px; font-size: 15px; cursor: pointer; }
-        button:hover { background: #333; }
-        .typing { color: #999; font-size: 14px; align-self: flex-start; padding: 8px 0; }
+        body { font-family: -apple-system, sans-serif; background: #0d1117; color: #e6edf3; height: 100vh; display: flex; flex-direction: column; }
+        .header { padding: 16px 24px; border-bottom: 1px solid #21262d; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 18px; font-weight: 600; color: #58a6ff; }
+        .logo span { color: #e6edf3; }
+        .clear-btn { padding: 6px 14px; background: transparent; border: 1px solid #30363d; color: #8b949e; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .clear-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+        #chatbox { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; max-width: 860px; width: 100%; margin: 0 auto; }
+        .message { display: flex; flex-direction: column; gap: 8px; }
+        .message-label { font-size: 12px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em; }
+        .user .message-label { color: #58a6ff; }
+        .message-content { padding: 14px 18px; border-radius: 10px; font-size: 15px; line-height: 1.7; }
+        .user .message-content { background: #1c2128; border: 1px solid #30363d; }
+        .ai .message-content { background: #161b22; border: 1px solid #21262d; }
+        .message-content pre { margin: 12px 0; border-radius: 8px; overflow: hidden; position: relative; }
+        .message-content code { font-family: 'Menlo', monospace; font-size: 13px; }
+        .message-content p { margin-bottom: 10px; }
+        .message-content p:last-child { margin-bottom: 0; }
+        .copy-btn { position: absolute; top: 8px; right: 8px; padding: 4px 10px; background: #30363d; border: none; color: #8b949e; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .copy-btn:hover { background: #58a6ff; color: white; }
+        .typing { color: #58a6ff; font-size: 14px; padding: 8px 0; }
+        .input-area { border-top: 1px solid #21262d; padding: 16px 24px; }
+        .input-row { max-width: 860px; margin: 0 auto; display: flex; gap: 10px; }
+        textarea { flex: 1; padding: 12px 16px; background: #161b22; border: 1px solid #30363d; border-radius: 10px; color: #e6edf3; font-size: 15px; outline: none; resize: none; height: 52px; font-family: -apple-system, sans-serif; }
+        textarea:focus { border-color: #58a6ff; }
+        button.send { padding: 12px 20px; background: #238636; color: white; border: none; border-radius: 10px; font-size: 15px; cursor: pointer; font-weight: 500; }
+        button.send:hover { background: #2ea043; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">AI Chat</div>
-        <div id="chatbox"></div>
+    <div class="header">
+        <div class="logo">My<span>BOT</span></div>
+        <button class="clear-btn" onclick="clearHistory()">Clear History</button>
+    </div>
+    <div id="chatbox"></div>
+    <div class="input-area">
         <div class="input-row">
-            <input type="text" id="userInput" placeholder="Type a message..." />
-            <button onclick="sendMessage()">Send</button>
+            <textarea id="userInput" placeholder="Ask anything about code..."></textarea>
+            <button class="send" onclick="sendMessage()">Send</button>
         </div>
     </div>
 
     <script>
+        marked.setOptions({ breaks: true });
+
+        function renderMessage(role, content) {
+            const chatbox = document.getElementById("chatbox");
+            const div = document.createElement("div");
+            div.className = `message ${role}`;
+            div.innerHTML = `
+                <div class="message-label">${role === "user" ? "You" : "MyBOT"}</div>
+                <div class="message-content">${role === "user" ? content : marked.parse(content)}</div>
+            `;
+            chatbox.appendChild(div);
+
+            div.querySelectorAll("pre code").forEach(block => {
+                hljs.highlightElement(block);
+                const btn = document.createElement("button");
+                btn.className = "copy-btn";
+                btn.textContent = "Copy";
+                btn.onclick = () => {
+                    navigator.clipboard.writeText(block.textContent);
+                    btn.textContent = "Copied!";
+                    setTimeout(() => btn.textContent = "Copy", 2000);
+                };
+                block.parentElement.style.position = "relative";
+                block.parentElement.appendChild(btn);
+            });
+
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        async function loadHistory() {
+            const res = await fetch("/history");
+            const messages = await res.json();
+            messages.forEach(m => renderMessage(m.role === "user" ? "user" : "ai", m.content));
+        }
+
         async function sendMessage() {
             const input = document.getElementById("userInput");
             const chatbox = document.getElementById("chatbox");
             const message = input.value.trim();
             if (!message) return;
 
-            chatbox.innerHTML += `<div class="message user">${message}</div>`;
+            renderMessage("user", message);
             input.value = "";
+            input.style.height = "52px";
 
             const typing = document.createElement("div");
             typing.className = "typing";
-            typing.textContent = "AI is typing...";
+            typing.textContent = "MyBOT is thinking...";
             chatbox.appendChild(typing);
             chatbox.scrollTop = chatbox.scrollHeight;
 
@@ -53,13 +108,22 @@
 
             const data = await response.json();
             chatbox.removeChild(typing);
-            chatbox.innerHTML += `<div class="message ai">${data.reply}</div>`;
-            chatbox.scrollTop = chatbox.scrollHeight;
+            renderMessage("ai", data.reply);
         }
 
-        document.getElementById("userInput").addEventListener("keypress", function(e) {
-            if (e.key === "Enter") sendMessage();
+        async function clearHistory() {
+            await fetch("/clear", { method: "POST" });
+            document.getElementById("chatbox").innerHTML = "";
+        }
+
+        document.getElementById("userInput").addEventListener("keydown", function(e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
         });
+
+        loadHistory();
     </script>
 </body>
 </html>
